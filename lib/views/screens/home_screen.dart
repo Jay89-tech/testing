@@ -1,8 +1,10 @@
-// views/screens/home_screen.dart
+// lib/views/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_screen.dart';
+import 'skills/skills_list_screen.dart';
+import 'skills/add_skill_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _userType = '';
   String _department = '';
   bool _isDrawerOpen = false;
+  bool _isLoadingUserData = true;
 
   @override
   void initState() {
@@ -47,19 +50,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
-      if (doc.exists && mounted) {
-        final data = doc.data()!;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        
+        if (doc.exists && mounted) {
+          final data = doc.data()!;
+          setState(() {
+            _userName = data['name'] ?? 'User';
+            _userType = data['userType'] ?? 'Employee';
+            _department = data['department'] ?? '';
+            _isLoadingUserData = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      if (mounted) {
         setState(() {
-          _userName = data['name'] ?? '';
-          _userType = data['userType'] ?? '';
-          _department = data['department'] ?? '';
+          _userName = 'User';
+          _userType = 'Employee';
+          _department = '';
+          _isLoadingUserData = false;
         });
       }
     }
@@ -78,12 +94,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AuthScreen()),
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AuthScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: $e')),
       );
     }
+  }
+
+  void _navigateToAddSkill() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddSkillScreen(),
+      ),
+    );
+  }
+
+  void _navigateToViewSkills() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SkillsListScreen(),
+      ),
+    );
   }
 
   @override
@@ -105,13 +143,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             margin: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
               backgroundColor: Colors.white.withOpacity(0.2),
-              child: Text(
-                _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: _isLoadingUserData
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -138,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Welcome, $_userName',
+                        _isLoadingUserData ? 'Welcome!' : 'Welcome, $_userName',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -147,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '$_userType • $_department',
+                        _isLoadingUserData ? 'Loading...' : '$_userType • $_department',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
@@ -181,20 +228,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         title: 'Add Skills',
                         subtitle: 'Update your skill set',
                         color: const Color(0xFF4CAF50),
-                        onTap: () {
-                          // TODO: Navigate to add skills screen
-                          _showComingSoonDialog('Add Skills');
-                        },
+                        onTap: _navigateToAddSkill,
                       ),
                       _buildActionCard(
                         icon: Icons.list_alt,
                         title: 'View Skills',
                         subtitle: 'See your current skills',
                         color: const Color(0xFF2196F3),
-                        onTap: () {
-                          // TODO: Navigate to view skills screen
-                          _showComingSoonDialog('View Skills');
-                        },
+                        onTap: _navigateToViewSkills,
                       ),
                       if (_userType == 'Admin') ...[
                         _buildActionCard(
@@ -203,7 +244,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           subtitle: 'View department insights',
                           color: const Color(0xFF9C27B0),
                           onTap: () {
-                            // TODO: Navigate to analytics screen
                             _showComingSoonDialog('Analytics');
                           },
                         ),
@@ -213,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           subtitle: 'View all employees',
                           color: const Color(0xFFFF9800),
                           onTap: () {
-                            // TODO: Navigate to user management screen
                             _showComingSoonDialog('User Management');
                           },
                         ),
@@ -277,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            _userName,
+                            _isLoadingUserData ? 'Loading...' : _userName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -285,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ),
                           Text(
-                            _userType,
+                            _isLoadingUserData ? '' : _userType,
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 14,
@@ -319,9 +358,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           title: 'My Skills',
                           onTap: () {
                             _toggleDrawer();
-                            _showComingSoonDialog('My Skills');
+                            _navigateToViewSkills();
                           },
                         ),
+                        _buildDrawerItem(
+                          icon: Icons.add_circle_outline,
+                          title: 'Add Skill',
+                          onTap: () {
+                            _toggleDrawer();
+                            _navigateToAddSkill();
+                          },
+                        ),
+                        if (_userType == 'Admin') ...[
+                          const Divider(),
+                          _buildDrawerItem(
+                            icon: Icons.analytics,
+                            title: 'Analytics',
+                            onTap: () {
+                              _toggleDrawer();
+                              _showComingSoonDialog('Analytics');
+                            },
+                          ),
+                          _buildDrawerItem(
+                            icon: Icons.people,
+                            title: 'User Management',
+                            onTap: () {
+                              _toggleDrawer();
+                              _showComingSoonDialog('User Management');
+                            },
+                          ),
+                        ],
+                        const Divider(),
                         _buildDrawerItem(
                           icon: Icons.info,
                           title: 'About Us',

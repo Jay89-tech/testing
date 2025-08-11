@@ -1,7 +1,6 @@
-// views/screens/auth_screen.dart
+// lib/views/screens/auth_screen.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/firebase/auth_service.dart';
 import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -15,13 +14,13 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isSignIn = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
-  
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _departmentController = TextEditingController();
-  
+
   String _selectedUserType = 'Employee';
   final List<String> _userTypes = ['Employee', 'Admin'];
 
@@ -36,22 +35,23 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final result = await AuthService.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
-      if (mounted) {
+
+      if (result.success && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
+      } else {
+        _showErrorDialog(result.message);
       }
-    } on FirebaseAuthException catch (e) {
-      _showErrorDialog(_getErrorMessage(e.code));
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -59,55 +59,28 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      final result = await AuthService.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        name: _nameController.text.trim(),
+        department: _departmentController.text.trim(),
+        userType: _selectedUserType,
       );
 
-      // Store additional user data in Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set({
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'department': _departmentController.text.trim(),
-        'userType': _selectedUserType,
-        'createdAt': FieldValue.serverTimestamp(),
-        'skills': [],
-      });
-
-      if (mounted) {
+      if (result.success && mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
+      } else {
+        _showErrorDialog(result.message);
       }
-    } on FirebaseAuthException catch (e) {
-      _showErrorDialog(_getErrorMessage(e.code));
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  String _getErrorMessage(String code) {
-    switch (code) {
-      case 'user-not-found':
-        return 'No user found with this email address.';
-      case 'wrong-password':
-        return 'Incorrect password.';
-      case 'email-already-in-use':
-        return 'An account already exists with this email.';
-      case 'weak-password':
-        return 'Password is too weak.';
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      default:
-        return 'An error occurred. Please try again.';
     }
   }
 
@@ -121,6 +94,69 @@ class _AuthScreenState extends State<AuthScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email address to receive a password reset link.'),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                prefixIcon: Icon(Icons.email),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter your email address')),
+                );
+                return;
+              }
+
+              try {
+                final result = await AuthService.sendPasswordResetEmail(email);
+                Navigator.of(context).pop();
+
+                if (result.success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password reset email sent! Check your inbox.'),
+                      backgroundColor: Color(0xFF2E7D6B),
+                    ),
+                  );
+                } else {
+                  _showErrorDialog(result.message);
+                }
+              } catch (e) {
+                Navigator.of(context).pop();
+                _showErrorDialog('Failed to send password reset email');
+              }
+            },
+            child: const Text('Send Reset Link'),
           ),
         ],
       ),
@@ -155,7 +191,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo and Title
+                      // Logo
                       Container(
                         width: 80,
                         height: 80,
@@ -170,6 +206,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
+
+                      // Title
                       Text(
                         _isSignIn ? 'Welcome Back' : 'Create Account',
                         style: const TextStyle(
@@ -180,7 +218,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _isSignIn 
+                        _isSignIn
                             ? 'Sign in to access your skills profile'
                             : 'Join the Skills Audit System',
                         style: TextStyle(
@@ -203,14 +241,17 @@ class _AuthScreenState extends State<AuthScreen> {
                                   prefixIcon: Icon(Icons.person),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
+                                  if (value == null || value.trim().isEmpty) {
                                     return 'Please enter your full name';
+                                  }
+                                  if (value.trim().length < 2) {
+                                    return 'Name must be at least 2 characters';
                                   }
                                   return null;
                                 },
                               ),
                               const SizedBox(height: 16),
-                              
+
                               TextFormField(
                                 controller: _departmentController,
                                 decoration: const InputDecoration(
@@ -218,7 +259,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   prefixIcon: Icon(Icons.business),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.isEmpty) {
+                                  if (value == null || value.trim().isEmpty) {
                                     return 'Please enter your department';
                                   }
                                   return null;
@@ -255,11 +296,11 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               keyboardType: TextInputType.emailAddress,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (value == null || value.trim().isEmpty) {
                                   return 'Please enter your email';
                                 }
                                 if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                    .hasMatch(value)) {
+                                    .hasMatch(value.trim())) {
                                   return 'Please enter a valid email';
                                 }
                                 return null;
@@ -302,8 +343,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               width: double.infinity,
                               height: 48,
                               child: ElevatedButton(
-                                onPressed: _isLoading 
-                                    ? null 
+                                onPressed: _isLoading
+                                    ? null
                                     : (_isSignIn ? _signIn : _signUp),
                                 child: _isLoading
                                     ? const SizedBox(
@@ -316,7 +357,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                         ),
                                       )
                                     : Text(
-                                        _isSignIn ? 'Sign In' : 'Create Account',
+                                        _isSignIn
+                                            ? 'Sign In'
+                                            : 'Create Account',
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -330,7 +373,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
                       const SizedBox(height: 20),
 
-                      // Toggle between sign in and sign up
+                      // Toggle Sign In / Sign Up
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -345,6 +388,10 @@ class _AuthScreenState extends State<AuthScreen> {
                               setState(() {
                                 _isSignIn = !_isSignIn;
                                 _formKey.currentState?.reset();
+                                _emailController.clear();
+                                _passwordController.clear();
+                                _nameController.clear();
+                                _departmentController.clear();
                               });
                             },
                             child: Text(
@@ -357,6 +404,21 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ],
                       ),
+
+                      // Forgot Password link
+                      if (_isSignIn) ...[
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: _showForgotPasswordDialog,
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              color: Color(0xFF2E7D6B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -318,7 +318,7 @@ class FirestoreService {
           .collection(_usersCollection)
           .orderBy('name')
           .startAt([query])
-          .endAt([query + '\uf8ff'])
+          .endAt(['$query\uf8ff'])
           .get();
       
       return snapshot.docs
@@ -335,7 +335,7 @@ class FirestoreService {
           .collection(_skillsCollection)
           .orderBy('name')
           .startAt([query])
-          .endAt([query + '\uf8ff'])
+          .endAt(['$query\uf8ff'])
           .get();
       
       return snapshot.docs

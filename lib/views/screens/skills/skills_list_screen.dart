@@ -166,7 +166,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                                   ],
                                 ),
                               );
-                            }).toList(),
+                            }),
                           ],
                           onChanged: (value) {
                             setState(() {

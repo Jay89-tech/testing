@@ -9,6 +9,8 @@ class UserModel {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? profileImageURL;
+  final DateTime? lastLogin;
+
 
   UserModel({
     required this.id,
@@ -20,6 +22,7 @@ class UserModel {
     required this.createdAt,
     this.updatedAt,
     this.profileImageURL,
+    this.lastLogin,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
@@ -56,7 +59,8 @@ UserModel copyWith({
   List<String>? skills,
   DateTime? createdAt,
   DateTime? updatedAt,
-  String? profileImageURL, // Added this line
+  String? profileImageURL,
+  DateTime? lastLogin,
 }) {
   return UserModel(
     id: id ?? this.id,
@@ -67,13 +71,14 @@ UserModel copyWith({
     skills: skills ?? this.skills,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
-    profileImageURL: profileImageURL ?? this.profileImageURL, // Added this line
+    profileImageURL: profileImageURL ?? this.profileImageURL,
+    lastLogin: lastLogin ?? this.lastLogin,
   );
 }
 
   @override
   String toString() {
-    return 'UserModel(id: $id, name: $name, email: $email, department: $department, userType: $userType, skills: $skills)';
+    return 'UserModel(id: $id, name: $name, email: $email, department: $department, userType: $userType, skills: $skills, lastLogin: $lastLogin)';
   }
 
   @override
@@ -84,7 +89,8 @@ UserModel copyWith({
         other.name == name &&
         other.email == email &&
         other.department == department &&
-        other.userType == userType;
+        other.userType == userType &&
+        other.lastLogin == lastLogin;
   }
 
   @override
@@ -93,6 +99,7 @@ UserModel copyWith({
         name.hashCode ^
         email.hashCode ^
         department.hashCode ^
-        userType.hashCode;
+        userType.hashCode ^
+        lastLogin.hashCode;
   }
 }

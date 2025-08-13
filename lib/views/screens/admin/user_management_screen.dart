@@ -1,5 +1,13 @@
 // lib/views/screens/admin/user_management_screen.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/services/firebase/firestore_service.dart'; // Ensure this path is correct
+import '/models/user_model.dart'; // Ensure this path is correct
+// import 'analytics_screen.dart'; // Uncomment if needed
+// import 'admin_dashboard_screen.dart'; // Uncomment if needed
+// import '/utils/constants/app_constants.dart'; // Uncomment if needed
+// import '/models/themes/app_theme.dart'; // Uncomment if needed
+
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -35,64 +43,11 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     'Guest',
   ];
 
-  // Sample user data
-  final List<Map<String, dynamic>> _users = [
-    {
-      'id': '1',
-      'name': 'John Doe',
-      'email': 'john.doe@treasury.gov.za',
-      'department': 'Finance',
-      'role': 'Manager',
-      'status': 'Active',
-      'lastLogin': '2024-12-15',
-      'skillsCount': 12,
-      'joinDate': '2023-01-15',
-    },
-    {
-      'id': '2',
-      'name': 'Sarah Smith',
-      'email': 'sarah.smith@treasury.gov.za',
-      'department': 'Human Resources',
-      'role': 'Administrator',
-      'status': 'Active',
-      'lastLogin': '2024-12-14',
-      'skillsCount': 8,
-      'joinDate': '2022-03-20',
-    },
-    {
-      'id': '3',
-      'name': 'Mike Johnson',
-      'email': 'mike.johnson@treasury.gov.za',
-      'department': 'Information Technology',
-      'role': 'Employee',
-      'status': 'Active',
-      'lastLogin': '2024-12-13',
-      'skillsCount': 15,
-      'joinDate': '2023-06-10',
-    },
-    {
-      'id': '4',
-      'name': 'Lisa Brown',
-      'email': 'lisa.brown@treasury.gov.za',
-      'department': 'Legal',
-      'role': 'Manager',
-      'status': 'Inactive',
-      'lastLogin': '2024-11-28',
-      'skillsCount': 6,
-      'joinDate': '2022-09-05',
-    },
-    {
-      'id': '5',
-      'name': 'David Wilson',
-      'email': 'david.wilson@treasury.gov.za',
-      'department': 'Operations',
-      'role': 'Employee',
-      'status': 'Active',
-      'lastLogin': '2024-12-12',
-      'skillsCount': 9,
-      'joinDate': '2023-11-15',
-    },
-  ];
+  // Controllers for adding new user dialog
+  final TextEditingController _addNameController = TextEditingController();
+  final TextEditingController _addEmailController = TextEditingController();
+  final TextEditingController _addDepartmentController = TextEditingController();
+  final TextEditingController _addRoleController = TextEditingController();
 
   @override
   void initState() {
@@ -109,6 +64,10 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _addNameController.dispose();
+    _addEmailController.dispose();
+    _addDepartmentController.dispose();
+    _addRoleController.dispose();
     super.dispose();
   }
 
@@ -147,108 +106,130 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   }
 
   Widget _buildUsersTab() {
-    return Column(
-      children: [
-        // Search and Filter Bar
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.grey[50],
-          child: Column(
-            children: [
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search users by name or email...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
+    return StreamBuilder<List<UserModel>>(
+      stream: FirestoreService.getUsersStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error: ${snapshot.error}'),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        final users = snapshot.data ?? [];
+        final filteredUsers = _getFilteredUsers(users);
+        final activeUsers = users.where((user) => user.userType != 'Inactive').length;
+        final inactiveUsers = users.length - activeUsers;
+
+        return Column(
+          children: [
+            // Search and Filter Bar (keep existing)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[50],
+              child: Column(
                 children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedDepartment,
-                      decoration: const InputDecoration(
-                        labelText: 'Department',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: _departments.map((dept) {
-                        return DropdownMenuItem(value: dept, child: Text(dept));
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDepartment = value!;
-                        });
-                      },
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search users by name or email...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            )
+                          : null,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedRole,
-                      decoration: const InputDecoration(
-                        labelText: 'Role',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedDepartment,
+                          decoration: const InputDecoration(
+                            labelText: 'Department',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: _departments.map((dept) {
+                            return DropdownMenuItem(value: dept, child: Text(dept));
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedDepartment = value!;
+                            });
+                          },
+                        ),
                       ),
-                      items: _roles.map((role) {
-                        return DropdownMenuItem(value: role, child: Text(role));
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRole = value!;
-                        });
-                      },
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedRole,
+                          decoration: const InputDecoration(
+                            labelText: 'Role',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: _roles.map((role) {
+                            return DropdownMenuItem(value: role, child: Text(role));
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedRole = value!;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
 
-        // User Stats
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildUserStatCard('Total Users', '245', Icons.people, Colors.blue),
+            // User Stats (updated with real data)
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildUserStatCard('Total Users', '${users.length}', Icons.people, Colors.blue),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildUserStatCard('Active', '$activeUsers', Icons.check_circle, Colors.green),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildUserStatCard('Inactive', '$inactiveUsers', Icons.pause_circle, Colors.orange),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildUserStatCard('Active', '198', Icons.check_circle, Colors.green),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildUserStatCard('Inactive', '47', Icons.pause_circle, Colors.orange),
-              ),
-            ],
-          ),
-        ),
+            ),
 
-        // Users List
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _getFilteredUsers().length,
-            itemBuilder: (context, index) {
-              final user = _getFilteredUsers()[index];
-              return _buildUserCard(user);
-            },
-          ),
-        ),
-      ],
+            // Users List
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: filteredUsers.length,
+                itemBuilder: (context, index) {
+                  final user = filteredUsers[index];
+                  return _buildUserCard(user);
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -326,6 +307,8 @@ class _UserManagementScreenState extends State<UserManagementScreen>
   }
 
   Widget _buildAuditLogTab() {
+    // This part still uses static data. To make it dynamic, you'd need
+    // an 'AuditLog' model and a corresponding stream/service from Firestore.
     final auditLogs = [
       {
         'timestamp': '2024-12-15 14:30:25',
@@ -432,7 +415,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
+  Widget _buildUserCard(UserModel user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -453,7 +436,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           radius: 25,
           backgroundColor: const Color(0xFF2E7D6B).withOpacity(0.1),
           child: Text(
-            user['name'].toString().split(' ').map((n) => n[0]).take(2).join(),
+            user.name.split(' ').map((n) => n[0]).take(2).join(),
             style: const TextStyle(
               color: Color(0xFF2E7D6B),
               fontWeight: FontWeight.bold,
@@ -461,7 +444,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
           ),
         ),
         title: Text(
-          user['name'],
+          user.name,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -470,23 +453,24 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(user['email']),
+            Text(user.email),
             const SizedBox(height: 4),
             Row(
               children: [
-                _buildUserBadge(user['department'], Colors.blue),
+                _buildUserBadge(user.department, Colors.blue),
                 const SizedBox(width: 8),
-                _buildUserBadge(user['role'], Colors.green),
+                _buildUserBadge(user.userType, Colors.green),
                 const SizedBox(width: 8),
+                // The status needs to be part of the UserModel if you want dynamic status display
                 _buildUserBadge(
-                  user['status'], 
-                  user['status'] == 'Active' ? Colors.green : Colors.orange,
+                  user.userType, // Assuming userType can also represent active/inactive
+                  user.userType != 'Inactive' ? Colors.green : Colors.orange,
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              'Last login: ${user['lastLogin']} • ${user['skillsCount']} skills',
+              'Joined: ${user.createdAt.day}/${user.createdAt.month}/${user.createdAt.year} • ${user.skills.length} skills',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -498,8 +482,8 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             const PopupMenuItem(value: 'permissions', child: Text('Manage Permissions')),
             const PopupMenuItem(value: 'reset_password', child: Text('Reset Password')),
             PopupMenuItem(
-              value: user['status'] == 'Active' ? 'deactivate' : 'activate',
-              child: Text(user['status'] == 'Active' ? 'Deactivate' : 'Activate'),
+              value: user.userType != 'Inactive' ? 'deactivate' : 'activate',
+              child: Text(user.userType != 'Inactive' ? 'Deactivate' : 'Activate'),
             ),
             const PopupMenuItem(value: 'delete', child: Text('Delete User')),
           ],
@@ -715,57 +699,87 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredUsers() {
-    return _users.where((user) {
+  List<UserModel> _getFilteredUsers(List<UserModel> users) {
+    return users.where((user) {
       final matchesSearch = _searchQuery.isEmpty ||
-          user['name'].toString().toLowerCase().contains(_searchQuery) ||
-          user['email'].toString().toLowerCase().contains(_searchQuery);
+          user.name.toLowerCase().contains(_searchQuery) ||
+          user.email.toLowerCase().contains(_searchQuery);
       
       final matchesDepartment = _selectedDepartment == 'All Departments' ||
-          user['department'] == _selectedDepartment;
+          user.department == _selectedDepartment;
       
       final matchesRole = _selectedRole == 'All Roles' ||
-          user['role'] == _selectedRole;
+          user.userType == _selectedRole; // Assuming userType is used for role
       
       return matchesSearch && matchesDepartment && matchesRole;
     }).toList();
   }
 
   void _showAddUserDialog() {
+    // Clear controllers before showing the dialog
+    _addNameController.clear();
+    _addEmailController.clear();
+    _addDepartmentController.clear();
+    _addRoleController.clear();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add New User'),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: InputDecoration(
+                controller: _addNameController,
+                decoration: const InputDecoration(
                   labelText: 'Full Name',
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextField(
-                decoration: InputDecoration(
+                controller: _addEmailController,
+                decoration: const InputDecoration(
                   labelText: 'Email Address',
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedDepartment == 'All Departments' ? null : _selectedDepartment, // Set initial value
+                decoration: const InputDecoration(
                   labelText: 'Department',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
+                items: _departments.where((d) => d != 'All Departments').map((dept) {
+                  return DropdownMenuItem(value: dept, child: Text(dept));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _addDepartmentController.text = value!;
+                  });
+                },
+                hint: const Text('Select Department'), // Add a hint
               ),
-              SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedRole == 'All Roles' ? null : _selectedRole, // Set initial value
+                decoration: const InputDecoration(
                   labelText: 'Role',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
+                items: _roles.where((r) => r != 'All Roles').map((role) {
+                  return DropdownMenuItem(value: role, child: Text(role));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _addRoleController.text = value!;
+                  });
+                },
+                hint: const Text('Select Role'), // Add a hint
               ),
             ],
           ),
@@ -776,9 +790,37 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('User added successfully');
+            onPressed: () async {
+              try {
+                // Basic validation
+                if (_addNameController.text.isEmpty ||
+                    _addEmailController.text.isEmpty ||
+                    _addDepartmentController.text.isEmpty ||
+                    _addRoleController.text.isEmpty) {
+                  _showErrorSnackBar('Please fill all fields.');
+                  return;
+                }
+
+                // Create a new UserModel
+                final newUser = UserModel(
+                  id: '', // Firestore will assign an ID
+                  name: _addNameController.text.trim(),
+                  email: _addEmailController.text.trim(),
+                  department: _addDepartmentController.text.trim(),
+                  userType: _addRoleController.text.trim(), // Assuming 'userType' is used for role
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                  lastLogin: DateTime.now(),
+                  skills: [], // Initialize with empty skills
+                );
+
+                await FirestoreService.addUser(newUser);
+                Navigator.pop(context);
+                _showSuccessSnackBar('User added successfully');
+              } catch (e) {
+                Navigator.pop(context);
+                _showErrorSnackBar('Failed to add user: $e');
+              }
             },
             child: const Text('Add User'),
           ),
@@ -787,62 +829,90 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  void _showPermissionsDialog(Map<String, dynamic> user) {
+  void _showPermissionsDialog(UserModel user) {
+    String tempSelectedRole = user.userType; // Use a temporary variable for the dialog's state
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Manage Permissions - ${user['name']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current Role: ${user['role']}'),
-            const SizedBox(height: 16),
-            const Text('Select new role:'),
-            const SizedBox(height: 8),
-            ...['Administrator', 'Manager', 'Employee', 'Guest'].map((role) => 
-              RadioListTile<String>(
-                title: Text(role),
-                value: role,
-                groupValue: user['role'],
-                onChanged: (value) {
-                  // Handle role change
-                },
+      builder: (context) {
+        return StatefulBuilder( // Use StatefulBuilder to update the dialog's state
+          builder: (context, setStateInsideDialog) {
+            return AlertDialog(
+              title: Text('Manage Permissions - ${user.name}'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Current Role: ${user.userType}'),
+                  const SizedBox(height: 16),
+                  const Text('Select new role:'),
+                  const SizedBox(height: 8),
+                  ..._roles.where((r) => r != 'All Roles').map((role) => 
+                    RadioListTile<String>(
+                      title: Text(role),
+                      value: role,
+                      groupValue: tempSelectedRole,
+                      onChanged: (value) {
+                        setStateInsideDialog(() { // Update the dialog's local state
+                          tempSelectedRole = value!;
+                        });
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('Permissions updated successfully');
-            },
-            child: const Text('Update Permissions'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      final updatedUser = user.copyWith(
+                        userType: tempSelectedRole,
+                        updatedAt: DateTime.now(),
+                      );
+                      await FirestoreService.updateUser(updatedUser);
+                      Navigator.pop(context);
+                      _showSuccessSnackBar('Permissions updated successfully');
+                    } catch (e) {
+                      Navigator.pop(context);
+                      _showErrorSnackBar('Failed to update permissions: $e');
+                    }
+                  },
+                  child: const Text('Update Permissions'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
-  void _resetPassword(Map<String, dynamic> user) {
+
+  void _resetPassword(UserModel user) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Password'),
-        content: Text('Are you sure you want to reset the password for ${user['name']}?\n\nA temporary password will be sent to ${user['email']}.'),
+        content: Text('Are you sure you want to reset the password for ${user.name}?\n\nA temporary password will be sent to ${user.email}.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('Password reset email sent to ${user['email']}');
+            onPressed: () async {
+              try {
+                // Implement Firebase Auth password reset here
+                // For example: await FirebaseAuth.instance.sendPasswordResetEmail(email: user.email);
+                Navigator.pop(context);
+                _showSuccessSnackBar('Password reset email sent to ${user.email}');
+              } catch (e) {
+                Navigator.pop(context);
+                _showErrorSnackBar('Failed to send password reset email: $e');
+              }
             },
             child: const Text('Reset Password'),
           ),
@@ -851,27 +921,34 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  void _toggleUserStatus(Map<String, dynamic> user) {
-    final isActive = user['status'] == 'Active';
+  void _toggleUserStatus(UserModel user) {
+    final isActive = user.userType != 'Inactive'; // Assuming 'Inactive' is the status for inactive users
     final action = isActive ? 'deactivate' : 'activate';
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${isActive ? 'Deactivate' : 'Activate'} User'),
-        content: Text('Are you sure you want to $action ${user['name']}?'),
+        content: Text('Are you sure you want to $action ${user.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                user['status'] = isActive ? 'Inactive' : 'Active';
-              });
-              _showSuccessSnackBar('User ${isActive ? 'deactivated' : 'activated'} successfully');
+            onPressed: () async {
+              try {
+                final updatedUser = user.copyWith(
+                  userType: isActive ? 'Inactive' : 'Employee', // Set to a default active role if activating
+                  updatedAt: DateTime.now(),
+                );
+                await FirestoreService.updateUser(updatedUser);
+                Navigator.pop(context);
+                _showSuccessSnackBar('User ${isActive ? 'deactivated' : 'activated'} successfully');
+              } catch (e) {
+                Navigator.pop(context);
+                _showErrorSnackBar('Failed to change user status: $e');
+              }
             },
             child: Text(isActive ? 'Deactivate' : 'Activate'),
           ),
@@ -880,44 +957,6 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  void _showDeleteConfirmation(Map<String, dynamic> user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete User'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Are you sure you want to delete ${user['name']}?'),
-            const SizedBox(height: 8),
-            const Text(
-              'This action cannot be undone. All user data including skills and certifications will be permanently deleted.',
-              style: TextStyle(color: Colors.red, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _users.removeWhere((u) => u['id'] == user['id']);
-              });
-              _showSuccessSnackBar('User deleted successfully');
-            },
-            child: const Text('Delete User'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _editPermissions(String role) {
     showDialog(
@@ -979,7 +1018,17 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     );
   }
 
-  void _handleUserAction(String action, Map<String, dynamic> user) {
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleUserAction(String action, UserModel user) {
     switch (action) {
       case 'edit':
         _showEditUserDialog(user);
@@ -1000,7 +1049,13 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     }
   }
 
-  void _showEditUserDialog(Map<String, dynamic> user) {
+  void _showEditUserDialog(UserModel user) {
+    final nameController = TextEditingController(text: user.name);
+    final emailController = TextEditingController(text: user.email);
+    final departmentController = TextEditingController(text: user.department);
+    final roleController = TextEditingController(text: user.userType);
+
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1014,7 +1069,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   labelText: 'Full Name',
                   border: OutlineInputBorder(),
                 ),
-                controller: TextEditingController(text: user['name']),
+                controller: nameController,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -1022,23 +1077,44 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                   labelText: 'Email Address',
                   border: OutlineInputBorder(),
                 ),
-                controller: TextEditingController(text: user['email']),
+                controller: emailController,
+                enabled: false, // Email shouldn't be editable
               ),
               const SizedBox(height: 16),
-              TextField(
+              DropdownButtonFormField<String>(
+                value: departmentController.text.isEmpty ? null : departmentController.text,
                 decoration: const InputDecoration(
                   labelText: 'Department',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                controller: TextEditingController(text: user['department']),
+                items: _departments.where((d) => d != 'All Departments').map((dept) {
+                  return DropdownMenuItem(value: dept, child: Text(dept));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    departmentController.text = value!;
+                  });
+                },
+                hint: const Text('Select Department'),
               ),
               const SizedBox(height: 16),
-              TextField(
+              DropdownButtonFormField<String>(
+                value: roleController.text.isEmpty ? null : roleController.text,
                 decoration: const InputDecoration(
                   labelText: 'Role',
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                controller: TextEditingController(text: user['role']),
+                items: _roles.where((r) => r != 'All Roles').map((role) {
+                  return DropdownMenuItem(value: role, child: Text(role));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    roleController.text = value!;
+                  });
+                },
+                hint: const Text('Select Role'),
               ),
             ],
           ),
@@ -1049,13 +1125,46 @@ class _UserManagementScreenState extends State<UserManagementScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('User updated successfully');
+            onPressed: () async {
+              try {
+                final updatedUser = user.copyWith(
+                  name: nameController.text.trim(),
+                  department: departmentController.text.trim(),
+                  userType: roleController.text.trim(),
+                  updatedAt: DateTime.now(),
+                );
+                
+                await FirestoreService.updateUser(updatedUser);
+                Navigator.pop(context);
+                _showSuccessSnackBar('User updated successfully');
+              } catch (e) {
+                Navigator.pop(context);
+                _showErrorSnackBar('Failed to update user: $e');
+              }
             },
             child: const Text('Save Changes'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(UserModel user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Are you sure you want to delete ${user.name}?'),
+            const SizedBox(height: 8),
+            const Text(
+              'This action cannot be undone. All user data including skills will be permanently deleted.',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }

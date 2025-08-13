@@ -12,16 +12,18 @@ class FirestoreService {
   static const String _departmentsCollection = 'departments';
 
   // User operations
-  static Future<void> createUser(UserModel user) async {
-    try {
-      await _firestore
-          .collection(_usersCollection)
-          .doc(user.id)
-          .set(user.toMap());
-    } catch (e) {
-      throw Exception('Failed to create user: $e');
-    }
+
+
+// To this:
+static Future<void> addUser(UserModel user) async {
+  try {
+    // Use the user's UID as the document ID
+    await _firestore.collection(_usersCollection).doc(user.id).set(user.toMap());
+  } catch (e) {
+    throw Exception('Failed to add user: $e');
   }
+}
+
 
   static Future<UserModel?> getUser(String userId) async {
     try {

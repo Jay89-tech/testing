@@ -72,7 +72,7 @@ class AuthService {
           createdAt: DateTime.now(),
         );
         
-        await FirestoreService.createUser(newUser);
+        await FirestoreService.addUser(newUser);
         
         return AuthResultModel(
           success: true,

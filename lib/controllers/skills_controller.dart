@@ -1,5 +1,4 @@
 // lib/controllers/skills_controller.dart
-import 'package:flutter/material.dart';
 import '../models/skill_model.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/firebase/storage_service.dart';
@@ -14,13 +13,13 @@ class SkillsController extends BaseController {
   String _searchQuery = '';
   String _selectedCategory = 'All';
   String _selectedProficiencyLevel = 'All';
-  
+
   // Getters
   List<SkillModel> get skills => _filteredSkills;
   String get searchQuery => _searchQuery;
   String get selectedCategory => _selectedCategory;
   String get selectedProficiencyLevel => _selectedProficiencyLevel;
-  
+
   // Categories
   final List<String> categories = [
     'All',
@@ -34,7 +33,7 @@ class SkillsController extends BaseController {
     'Languages',
     'Other'
   ];
-  
+
   // Proficiency levels
   final List<String> proficiencyLevels = [
     'All',
@@ -51,7 +50,7 @@ class SkillsController extends BaseController {
       if (currentUser == null) {
         throw Exception('No authenticated user found');
       }
-      
+
       _skills = await FirestoreService.getUserSkills(currentUser.uid);
       _applyFilters();
     });
@@ -76,6 +75,9 @@ class SkillsController extends BaseController {
     File? certificateFile,
     Uint8List? certificateBytes,
     String? certificateFileName,
+    // Add acquiredDate and expiryDate to parameters
+    required DateTime acquiredDate,
+    DateTime? expiryDate,
   }) async {
     final result = await executeWithLoading(() async {
       final currentUser = AuthController.currentUser;
@@ -83,20 +85,20 @@ class SkillsController extends BaseController {
         throw Exception('No authenticated user found');
       }
 
-      String? certificateURL;
-      
+      String? certificationUrl; // Changed to certificationUrl
+
       // Upload certificate if provided
       if (certificateFile != null) {
         if (!StorageService.isValidDocumentType(certificateFile.path)) {
           throw Exception('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.');
         }
-        
+
         final fileSize = await certificateFile.length();
         if (!StorageService.isFileSizeValid(fileSize, maxSizeMB: 10)) {
           throw Exception('File size too large. Please upload files smaller than 10MB.');
         }
-        
-        certificateURL = await StorageService.uploadSkillDocument(
+
+        certificationUrl = await StorageService.uploadSkillDocument(
           currentUser.uid,
           'temp_${DateTime.now().millisecondsSinceEpoch}',
           certificateFile,
@@ -105,12 +107,12 @@ class SkillsController extends BaseController {
         if (!StorageService.isValidDocumentType(certificateFileName)) {
           throw Exception('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.');
         }
-        
+
         if (!StorageService.isFileSizeValid(certificateBytes.length, maxSizeMB: 10)) {
           throw Exception('File size too large. Please upload files smaller than 10MB.');
         }
-        
-        certificateURL = await StorageService.uploadSkillDocumentFromBytes(
+
+        certificationUrl = await StorageService.uploadSkillDocumentFromBytes(
           currentUser.uid,
           'temp_${DateTime.now().millisecondsSinceEpoch}',
           certificateBytes,
@@ -127,20 +129,22 @@ class SkillsController extends BaseController {
         proficiencyLevel: proficiencyLevel,
         experienceYears: experienceYears,
         isVerified: isVerified,
-        certificateURL: certificateURL,
+        certificationUrl: certificationUrl, // Changed to certificationUrl
         createdAt: DateTime.now(),
+        acquiredDate: acquiredDate, // Added
+        expiryDate: expiryDate, // Added
       );
 
       final skillId = await FirestoreService.addSkill(skill);
-      
+
       // Update the skill with the actual ID for storage purposes
       final updatedSkill = skill.copyWith(id: skillId);
       _skills.insert(0, updatedSkill);
       _applyFilters();
-      
+
       return true;
     });
-    
+
     return result ?? false;
   }
 
@@ -156,6 +160,9 @@ class SkillsController extends BaseController {
     Uint8List? newCertificateBytes,
     String? newCertificateFileName,
     bool removeCertificate = false,
+    // Add acquiredDate and expiryDate to parameters
+    required DateTime acquiredDate,
+    DateTime? expiryDate,
   }) async {
     final result = await executeWithLoading(() async {
       final currentUser = AuthController.currentUser;
@@ -169,47 +176,47 @@ class SkillsController extends BaseController {
       }
 
       final currentSkill = _skills[skillIndex];
-      String? certificateURL = currentSkill.certificateURL;
-      
+      String? certificationUrl = currentSkill.certificationUrl; // Changed to certificationUrl
+
       // Handle certificate changes
-      if (removeCertificate && certificateURL != null) {
-        await StorageService.deleteSkillDocument(certificateURL);
-        certificateURL = null;
+      if (removeCertificate && certificationUrl != null) {
+        await StorageService.deleteSkillDocument(certificationUrl);
+        certificationUrl = null;
       } else if (newCertificateFile != null) {
         // Delete old certificate if exists
-        if (certificateURL != null) {
-          await StorageService.deleteSkillDocument(certificateURL);
+        if (certificationUrl != null) {
+          await StorageService.deleteSkillDocument(certificationUrl);
         }
-        
+
         if (!StorageService.isValidDocumentType(newCertificateFile.path)) {
           throw Exception('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.');
         }
-        
+
         final fileSize = await newCertificateFile.length();
         if (!StorageService.isFileSizeValid(fileSize, maxSizeMB: 10)) {
           throw Exception('File size too large. Please upload files smaller than 10MB.');
         }
-        
-        certificateURL = await StorageService.uploadSkillDocument(
+
+        certificationUrl = await StorageService.uploadSkillDocument(
           currentUser.uid,
           skillId,
           newCertificateFile,
         );
       } else if (newCertificateBytes != null && newCertificateFileName != null) {
         // Delete old certificate if exists
-        if (certificateURL != null) {
-          await StorageService.deleteSkillDocument(certificateURL);
+        if (certificationUrl != null) {
+          await StorageService.deleteSkillDocument(certificationUrl);
         }
-        
+
         if (!StorageService.isValidDocumentType(newCertificateFileName)) {
           throw Exception('Invalid file type. Please upload PDF, DOC, DOCX, TXT, or image files.');
         }
-        
+
         if (!StorageService.isFileSizeValid(newCertificateBytes.length, maxSizeMB: 10)) {
           throw Exception('File size too large. Please upload files smaller than 10MB.');
         }
-        
-        certificateURL = await StorageService.uploadSkillDocumentFromBytes(
+
+        certificationUrl = await StorageService.uploadSkillDocumentFromBytes(
           currentUser.uid,
           skillId,
           newCertificateBytes,
@@ -223,17 +230,19 @@ class SkillsController extends BaseController {
         category: category,
         proficiencyLevel: proficiencyLevel,
         experienceYears: experienceYears,
-        certificateURL: certificateURL,
+        certificationUrl: certificationUrl, // Changed to certificationUrl
         updatedAt: DateTime.now(),
+        acquiredDate: acquiredDate, // Added
+        expiryDate: expiryDate, // Added
       );
 
       await FirestoreService.updateSkill(updatedSkill);
       _skills[skillIndex] = updatedSkill;
       _applyFilters();
-      
+
       return true;
     });
-    
+
     return result ?? false;
   }
 
@@ -246,19 +255,19 @@ class SkillsController extends BaseController {
       }
 
       final skill = _skills[skillIndex];
-      
+
       // Delete certificate if exists
-      if (skill.certificateURL != null) {
-        await StorageService.deleteSkillDocument(skill.certificateURL!);
+      if (skill.certificationUrl != null) { // Changed to certificationUrl
+        await StorageService.deleteSkillDocument(skill.certificationUrl!); // Changed to certificationUrl
       }
-      
+
       await FirestoreService.deleteSkill(skillId);
       _skills.removeAt(skillIndex);
       _applyFilters();
-      
+
       return true;
     });
-    
+
     return result ?? false;
   }
 
@@ -283,10 +292,10 @@ class SkillsController extends BaseController {
       await FirestoreService.updateSkill(updatedSkill);
       _skills[skillIndex] = updatedSkill;
       _applyFilters();
-      
+
       return true;
     });
-    
+
     return result ?? false;
   }
 
@@ -322,15 +331,15 @@ class SkillsController extends BaseController {
       // Search filter
       final matchesSearch = _searchQuery.isEmpty ||
           skill.name.toLowerCase().contains(_searchQuery) ||
-          skill.description.toLowerCase().contains(_searchQuery) ||
+          (skill.description?.toLowerCase() ?? '').contains(_searchQuery) || // Added null check
           skill.category.toLowerCase().contains(_searchQuery);
 
       // Category filter
-      final matchesCategory = _selectedCategory == 'All' || 
+      final matchesCategory = _selectedCategory == 'All' ||
           skill.category == _selectedCategory;
 
       // Proficiency level filter
-      final matchesProficiency = _selectedProficiencyLevel == 'All' || 
+      final matchesProficiency = _selectedProficiencyLevel == 'All' ||
           skill.proficiencyLevel == _selectedProficiencyLevel;
 
       return matchesSearch && matchesCategory && matchesProficiency;
@@ -359,44 +368,44 @@ class SkillsController extends BaseController {
   // Get skills statistics
   Map<String, int> getSkillsStatistics() {
     final stats = <String, int>{};
-    
+
     stats['total'] = _skills.length;
     stats['verified'] = _skills.where((skill) => skill.isVerified).length;
     stats['unverified'] = _skills.where((skill) => !skill.isVerified).length;
-    stats['withCertificates'] = _skills.where((skill) => skill.certificateURL != null).length;
-    
+    stats['withCertificates'] = _skills.where((skill) => skill.certificationUrl != null).length; // Changed to certificationUrl
+
     // Count by category
     for (final category in categories.where((c) => c != 'All')) {
       stats['category_$category'] = _skills.where((skill) => skill.category == category).length;
     }
-    
+
     // Count by proficiency level
     for (final level in proficiencyLevels.where((l) => l != 'All')) {
       stats['proficiency_$level'] = _skills.where((skill) => skill.proficiencyLevel == level).length;
     }
-    
+
     return stats;
   }
 
   // Get category distribution for charts
   Map<String, int> getCategoryDistribution() {
     final distribution = <String, int>{};
-    
+
     for (final skill in _skills) {
       distribution[skill.category] = (distribution[skill.category] ?? 0) + 1;
     }
-    
+
     return distribution;
   }
 
   // Get proficiency distribution for charts
   Map<String, int> getProficiencyDistribution() {
     final distribution = <String, int>{};
-    
+
     for (final skill in _skills) {
       distribution[skill.proficiencyLevel] = (distribution[skill.proficiencyLevel] ?? 0) + 1;
     }
-    
+
     return distribution;
   }
 
@@ -416,7 +425,9 @@ class SkillsController extends BaseController {
       'Proficiency Level': skill.proficiencyLevel,
       'Experience Years': skill.experienceYears,
       'Is Verified': skill.isVerified ? 'Yes' : 'No',
-      'Has Certificate': skill.certificateURL != null ? 'Yes' : 'No',
+      'Has Certificate': skill.certificationUrl != null ? 'Yes' : 'No', // Changed to certificationUrl
+      'Acquired Date': skill.acquiredDate.toIso8601String(), // Added
+      'Expiry Date': skill.expiryDate?.toIso8601String() ?? '', // Added
       'Created At': skill.createdAt.toIso8601String(),
       'Updated At': skill.updatedAt?.toIso8601String() ?? '',
     }).toList();
@@ -453,20 +464,20 @@ class SkillsController extends BaseController {
     if (years == null || years.trim().isEmpty) {
       return 'Experience years is required';
     }
-    
+
     final yearsInt = int.tryParse(years.trim());
     if (yearsInt == null) {
       return 'Please enter a valid number';
     }
-    
+
     if (yearsInt < 0) {
       return 'Experience years cannot be negative';
     }
-    
+
     if (yearsInt > 50) {
       return 'Experience years seems too high';
     }
-    
+
     return null;
   }
 

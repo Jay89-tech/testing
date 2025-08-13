@@ -1,9 +1,8 @@
-
 // lib/views/screens/skills/add_skill_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../models/skill_model.dart';
-import '../../../services/firebase/firestore_service.dart';
+import '../../../models/skill_model.dart'; // Ensure this path is correct
+import '../../../services/firebase/firestore_service.dart'; // Ensure this path is correct
 
 class AddSkillScreen extends StatefulWidget {
   const AddSkillScreen({super.key});
@@ -17,10 +16,12 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _certificationUrlController = TextEditingController();
-  
+  final _experienceYearsController = TextEditingController(); // Added controller for experience years
+
   bool _isLoading = false;
   String _selectedCategory = 'Technical';
-  SkillLevel _selectedLevel = SkillLevel.beginner;
+  // Changed from SkillLevel to String to match SkillModel's proficiencyLevel
+  String _selectedProficiencyLevel = SkillLevel.beginner.displayName;
   DateTime _acquiredDate = DateTime.now();
   DateTime? _expiryDate;
   bool _hasExpiry = false;
@@ -43,6 +44,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _certificationUrlController.dispose();
+    _experienceYearsController.dispose(); // Dispose the new controller
     super.dispose();
   }
 
@@ -113,7 +115,10 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
         userId: user.uid,
         name: _nameController.text.trim(),
         category: _selectedCategory,
-        level: _selectedLevel,
+        // Pass the selected proficiency level as a String
+        proficiencyLevel: _selectedProficiencyLevel,
+        // Pass the experience years from the controller
+        experienceYears: _experienceYearsController.text.trim(),
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
@@ -254,16 +259,16 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Skill Level
-                    DropdownButtonFormField<SkillLevel>(
-                      value: _selectedLevel,
+                    // Proficiency Level Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedProficiencyLevel,
                       decoration: const InputDecoration(
                         labelText: 'Proficiency Level *',
                         prefixIcon: Icon(Icons.bar_chart),
                       ),
                       items: SkillLevel.values.map((level) {
                         return DropdownMenuItem(
-                          value: level,
+                          value: level.displayName, // Store display name as String
                           child: Row(
                             children: [
                               Container(
@@ -282,11 +287,34 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                       }).toList(),
                       onChanged: (value) {
                         setState(() {
-                          _selectedLevel = value!;
+                          _selectedProficiencyLevel = value!;
                         });
                       },
                     ),
                     const SizedBox(height: 16),
+
+                    // Years of Experience
+                    TextFormField(
+                      controller: _experienceYearsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Years of Experience *',
+                        hintText: 'e.g., 5',
+                        prefixIcon: Icon(Icons.timelapse),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter years of experience';
+                        }
+                        final years = int.tryParse(value.trim());
+                        if (years == null || years < 0) {
+                          return 'Please enter a valid positive number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
 
                     // Description
                     TextFormField(
@@ -385,6 +413,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
     );
   }
 
+  // Helper method to get color for SkillLevel enum
   Color _getLevelColor(SkillLevel level) {
     switch (level) {
       case SkillLevel.beginner:

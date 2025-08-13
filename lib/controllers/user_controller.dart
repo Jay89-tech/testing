@@ -1,5 +1,4 @@
 // lib/controllers/user_controller.dart
-import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firebase/firestore_service.dart';
 import '../services/firebase/storage_service.dart';
@@ -357,12 +356,15 @@ class UserController extends BaseController {
     }) ?? false;
   }
 
-  // Get user by ID
-  Future<UserModel?> getUserById(String userId) async {
-    return await executeWithErrorHandling(() async {
-      return await FirestoreService.getUser(userId);
-    });
-  }
+// Get user by ID
+Future<UserModel?> getUserById(String userId) async {
+  // executeWithErrorHandling is designed to take an async function and
+  // handle potential errors and null returns.
+  // We simply pass the Firestore call directly to it.
+  return await executeWithErrorHandling<UserModel?>(() async {
+    return FirestoreService.getUser(userId);
+  });
+}
 
   // Refresh current user data
   Future<void> refreshCurrentUserData() async {
@@ -386,7 +388,7 @@ class UserController extends BaseController {
     if (name.trim().length > 50) {
       return 'Name must be less than 50 characters';
     }
-    if (!RegExp(r'^[a-zA-Z\s-\'\.]+).hasMatch(name.trim())) {
+    if (!RegExp(r'^[a-zA-Z\s-\.]+$').hasMatch(name.trim())) {
       return 'Name can only contain letters, spaces, hyphens, apostrophes, and periods';
     }
     return null;
@@ -409,7 +411,7 @@ class UserController extends BaseController {
     if (email == null || email.trim().isEmpty) {
       return 'Email is required';
     }
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}).hasMatch(email.trim())) {
+    if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(email.trim())) {
       return 'Please enter a valid email address';
     }
     return null;

@@ -8,6 +8,7 @@ class UserModel {
   final List<String> skills;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? profileImageURL;
 
   UserModel({
     required this.id,
@@ -18,6 +19,7 @@ class UserModel {
     required this.skills,
     required this.createdAt,
     this.updatedAt,
+    this.profileImageURL,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
@@ -45,27 +47,29 @@ class UserModel {
     };
   }
 
-  UserModel copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? department,
-    String? userType,
-    List<String>? skills,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return UserModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      department: department ?? this.department,
-      userType: userType ?? this.userType,
-      skills: skills ?? this.skills,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+UserModel copyWith({
+  String? id,
+  String? name,
+  String? email,
+  String? department,
+  String? userType,
+  List<String>? skills,
+  DateTime? createdAt,
+  DateTime? updatedAt,
+  String? profileImageURL, // Added this line
+}) {
+  return UserModel(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    email: email ?? this.email,
+    department: department ?? this.department,
+    userType: userType ?? this.userType,
+    skills: skills ?? this.skills,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    profileImageURL: profileImageURL ?? this.profileImageURL, // Added this line
+  );
+}
 
   @override
   String toString() {

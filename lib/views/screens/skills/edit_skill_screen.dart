@@ -19,11 +19,13 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _certificationUrlController;
-  
+  late final TextEditingController _experienceYearsController; // Added controller for experience years
+
   bool _isLoading = false;
   bool _isDeleting = false;
   late String _selectedCategory;
-  late SkillLevel _selectedLevel;
+  // Changed from SkillLevel to String to match SkillModel's proficiencyLevel
+  late String _selectedProficiencyLevel;
   late DateTime _acquiredDate;
   DateTime? _expiryDate;
   late bool _hasExpiry;
@@ -47,8 +49,10 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
     _nameController = TextEditingController(text: widget.skill.name);
     _descriptionController = TextEditingController(text: widget.skill.description ?? '');
     _certificationUrlController = TextEditingController(text: widget.skill.certificationUrl ?? '');
+    _experienceYearsController = TextEditingController(text: widget.skill.experienceYears); // Initialize experience years
     _selectedCategory = widget.skill.category;
-    _selectedLevel = widget.skill.level;
+    // Initialize with proficiencyLevel from the skill model
+    _selectedProficiencyLevel = widget.skill.proficiencyLevel;
     _acquiredDate = widget.skill.acquiredDate;
     _expiryDate = widget.skill.expiryDate;
     _hasExpiry = widget.skill.expiryDate != null;
@@ -59,6 +63,7 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
     _nameController.dispose();
     _descriptionController.dispose();
     _certificationUrlController.dispose();
+    _experienceYearsController.dispose(); // Dispose the new controller
     super.dispose();
   }
 
@@ -121,7 +126,10 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
       final updatedSkill = widget.skill.copyWith(
         name: _nameController.text.trim(),
         category: _selectedCategory,
-        level: _selectedLevel,
+        // Pass the selected proficiency level as a String
+        proficiencyLevel: _selectedProficiencyLevel,
+        // Pass the experience years from the controller
+        experienceYears: _experienceYearsController.text.trim(),
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
@@ -215,13 +223,13 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
   Color _getLevelColor(SkillLevel level) {
     switch (level) {
       case SkillLevel.beginner:
-        return Colors.green;
+        return Colors.red; // Corrected to be consistent with AddSkillScreen
       case SkillLevel.intermediate:
         return Colors.orange;
       case SkillLevel.advanced:
-        return Colors.red;
-      case SkillLevel.expert:
         return Colors.blue;
+      case SkillLevel.expert:
+        return Colors.green;
     }
   }
 
@@ -346,6 +354,29 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
+                    // Certification URL
+                    TextFormField(
+                      controller: _certificationUrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Certification URL (Optional)',
+                        hintText: 'https://example.com/certificate',
+                        prefixIcon: Icon(Icons.link),
+                      ),
+                      keyboardType: TextInputType.url,
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final urlPattern = RegExp(
+                            r'^https?:\/\/[^\s/$.?#].[^\s]*$',
+                            caseSensitive: false,
+                          );
+                          if (!urlPattern.hasMatch(value.trim())) {
+                            return 'Please enter a valid URL';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: _selectedCategory,
                       decoration: const InputDecoration(
@@ -365,15 +396,16 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<SkillLevel>(
-                      value: _selectedLevel,
+                    // Proficiency Level Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedProficiencyLevel,
                       decoration: const InputDecoration(
                         labelText: 'Proficiency Level *',
                         prefixIcon: Icon(Icons.bar_chart),
                       ),
                       items: SkillLevel.values.map((level) {
                         return DropdownMenuItem(
-                          value: level,
+                          value: level.displayName, // Store display name as String
                           child: Row(
                             children: [
                               Container(
@@ -392,9 +424,118 @@ class _EditSkillScreenState extends State<EditSkillScreen> {
                       }).toList(),
                       onChanged: (value) {
                         setState(() {
-                          _selectedLevel = value!;
+                          _selectedProficiencyLevel = value!;
                         });
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    // Years of Experience
+                    TextFormField(
+                      controller: _experienceYearsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Years of Experience *',
+                        hintText: 'e.g., 5',
+                        prefixIcon: Icon(Icons.timelapse),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter years of experience';
+                        }
+                        final years = int.tryParse(value.trim());
+                        if (years == null || years < 0) {
+                          return 'Please enter a valid positive number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Description
+                    TextFormField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description (Optional)',
+                        hintText: 'Describe your experience with this skill...',
+                        prefixIcon: Icon(Icons.description),
+                      ),
+                      maxLines: 3,
+                      maxLength: 500,
+                    ),
+                    const SizedBox(height: 16),
+                    // Acquired Date
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today),
+                      title: const Text('Date Acquired'),
+                      subtitle: Text(
+                        '${_acquiredDate.day}/${_acquiredDate.month}/${_acquiredDate.year}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: _selectAcquiredDate,
+                    ),
+                    const Divider(),
+
+                    // Expiry Date Toggle
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Has Expiry Date'),
+                      subtitle: const Text('Some certifications expire'),
+                      value: _hasExpiry,
+                      activeColor: const Color(0xFF2E7D6B),
+                      onChanged: (value) {
+                        setState(() {
+                          _hasExpiry = value;
+                          if (!value) {
+                            _expiryDate = null;
+                          }
+                        });
+                      },
+                    ),
+
+                    // Expiry Date (if enabled)
+                    if (_hasExpiry) ...[
+                      const SizedBox(height: 8),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.event_busy),
+                        title: const Text('Expiry Date'),
+                        subtitle: Text(
+                          _expiryDate != null
+                              ? '${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}'
+                              : 'Select expiry date',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: _selectExpiryDate,
+                      ),
+                      const Divider(),
+                    ],
+                    const SizedBox(height: 32),
+                    // Save Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _updateSkill,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Save Changes', // Changed button text
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
                     ),
                   ],
                 ),

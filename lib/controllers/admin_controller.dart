@@ -1,5 +1,4 @@
 // lib/controllers/admin_controller.dart
-import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/skill_model.dart';
 import '../services/firebase/firestore_service.dart';
@@ -74,8 +73,8 @@ class AdminController extends BaseController {
       final employeeCount = allUsers.where((user) => user.userType == 'Employee').length;
       final verifiedSkillsCount = allSkills.where((skill) => skill.isVerified).length;
       final unverifiedSkillsCount = allSkills.where((skill) => !skill.isVerified).length;
-      final skillsWithCertificates = allSkills.where((skill) => skill.certificateURL != null).length;
-      
+      final skillsWithCertificates = allSkills.where((skill) => skill.certificationUrl != null).length;
+
       // Recent statistics (last 30 days)
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
       final recentUsersCount = allUsers.where((user) => user.createdAt.isAfter(thirtyDaysAgo)).length;

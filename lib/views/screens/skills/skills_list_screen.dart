@@ -17,7 +17,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  SkillLevel? _selectedLevel;
+  String? _selectedProficiencyLevelFilter; // Changed from SkillLevel? to String?
 
   final List<String> _categories = [
     'All',
@@ -33,6 +33,16 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
     'Other'
   ];
 
+  // Proficiency levels for filtering (same as in SkillsController)
+  final List<String> _proficiencyLevels = [
+    'All',
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+    'Expert'
+  ];
+
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -42,7 +52,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     if (user == null) {
       return const Scaffold(
         body: Center(
@@ -109,7 +119,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Filters Row
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -134,22 +144,22 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                           underline: Container(),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 16),
-                      
-                      // Level Filter
+
+                      // Proficiency Level Filter
                       Container(
                         margin: const EdgeInsets.only(right: 8),
-                        child: DropdownButton<SkillLevel?>(
-                          value: _selectedLevel,
+                        child: DropdownButton<String?>( // Changed type to String?
+                          value: _selectedProficiencyLevelFilter,
                           hint: const Text('All Levels'),
                           items: [
-                            const DropdownMenuItem<SkillLevel?>(
+                            const DropdownMenuItem<String?>( // Changed type to String?
                               value: null,
                               child: Text('All Levels'),
                             ),
-                            ...SkillLevel.values.map((level) {
-                              return DropdownMenuItem<SkillLevel?>(
+                            ..._proficiencyLevels.where((level) => level != 'All').map((level) { // Iterate over string list
+                              return DropdownMenuItem<String?>( // Changed type to String?
                                 value: level,
                                 child: Row(
                                   children: [
@@ -158,11 +168,12 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                                       height: 12,
                                       margin: const EdgeInsets.only(right: 8),
                                       decoration: BoxDecoration(
-                                        color: _getLevelColor(level),
+                                        // Convert string back to SkillLevel for color
+                                        color: _getLevelColor(SkillLevel.fromString(level)),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
-                                    Text(level.displayName),
+                                    Text(level), // Display string directly
                                   ],
                                 ),
                               );
@@ -170,7 +181,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                           ],
                           onChanged: (value) {
                             setState(() {
-                              _selectedLevel = value;
+                              _selectedProficiencyLevelFilter = value;
                             });
                           },
                           underline: Container(),
@@ -182,7 +193,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
               ],
             ),
           ),
-          
+
           // Skills List
           Expanded(
             child: StreamBuilder<List<SkillModel>>(
@@ -193,7 +204,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                     child: CircularProgressIndicator(),
                   );
                 }
-                
+
                 if (snapshot.hasError) {
                   return Center(
                     child: Column(
@@ -221,10 +232,10 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                     ),
                   );
                 }
-                
+
                 final allSkills = snapshot.data ?? [];
                 final filteredSkills = _filterSkills(allSkills);
-                
+
                 if (filteredSkills.isEmpty) {
                   return Center(
                     child: Column(
@@ -237,7 +248,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          allSkills.isEmpty 
+                          allSkills.isEmpty
                               ? 'No skills added yet'
                               : 'No skills match your search',
                           style: TextStyle(
@@ -256,7 +267,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                     ),
                   );
                 }
-                
+
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: filteredSkills.length,
@@ -279,20 +290,24 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
           skill.name.toLowerCase().contains(_searchQuery) ||
           skill.category.toLowerCase().contains(_searchQuery) ||
           (skill.description?.toLowerCase().contains(_searchQuery) ?? false);
-      
+
       // Category filter
-      final matchesCategory = _selectedCategory == 'All' || 
+      final matchesCategory = _selectedCategory == 'All' ||
           skill.category == _selectedCategory;
-      
-      // Level filter
-      final matchesLevel = _selectedLevel == null || 
-          skill.level == _selectedLevel;
-      
+
+      // Proficiency level filter
+      final matchesLevel = _selectedProficiencyLevelFilter == null ||
+          _selectedProficiencyLevelFilter == 'All' || // Added 'All' check
+          skill.proficiencyLevel == _selectedProficiencyLevelFilter;
+
       return matchesSearch && matchesCategory && matchesLevel;
     }).toList();
   }
 
   Widget _buildSkillCard(SkillModel skill) {
+    // Determine the SkillLevel enum from the proficiencyLevel string for coloring
+    final SkillLevel skillLevelEnum = SkillLevel.fromString(skill.proficiencyLevel);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -331,21 +346,29 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                             color: Colors.grey[600],
                           ),
                         ),
+                        const SizedBox(height: 4), // Added spacing
+                        Text(
+                          'Experience: ${skill.experienceYears} years', // Display experience years
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  
-                  // Level indicator
+
+                  // Proficiency Level indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getLevelColor(skill.level).withOpacity(0.1),
+                      color: _getLevelColor(skillLevelEnum).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _getLevelColor(skill.level),
+                        color: _getLevelColor(skillLevelEnum),
                         width: 1,
                       ),
                     ),
@@ -356,17 +379,17 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: _getLevelColor(skill.level),
+                            color: _getLevelColor(skillLevelEnum),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          skill.level.displayName,
+                          skill.proficiencyLevel, // Display proficiency level string directly
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: _getLevelColor(skill.level),
+                            color: _getLevelColor(skillLevelEnum),
                           ),
                         ),
                       ],
@@ -374,7 +397,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                   ),
                 ],
               ),
-              
+
               // Description
               if (skill.description != null && skill.description!.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -388,9 +411,9 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-              
+
               const SizedBox(height: 12),
-              
+
               // Footer Row
               Row(
                 children: [
@@ -408,9 +431,9 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // Status indicators
                   if (skill.isVerified)
                     Container(
@@ -421,7 +444,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                         color: Colors.green[600],
                       ),
                     ),
-                  
+
                   if (skill.isExpired)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -490,7 +513,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
         builder: (context) => const AddSkillScreen(),
       ),
     );
-    
+
     if (result == true) {
       // Skill was added successfully, list will auto-update via stream
     }
@@ -502,7 +525,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
         builder: (context) => EditSkillScreen(skill: skill),
       ),
     );
-    
+
     if (result == true) {
       // Skill was updated/deleted, list will auto-update via stream
     }

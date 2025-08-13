@@ -39,7 +39,10 @@ class SkillModel {
   final String userId;
   final String name;
   final String category;
-  final SkillLevel level;
+  
+  // Changed to String to align with UI and controller usage
+  final String proficiencyLevel;
+  final String experienceYears; // Changed to String
   final String? description;
   final String? certificationUrl;
   final DateTime acquiredDate;
@@ -47,13 +50,15 @@ class SkillModel {
   final bool isVerified;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? level;
 
   SkillModel({
     required this.id,
     required this.userId,
     required this.name,
     required this.category,
-    required this.level,
+    required this.proficiencyLevel, // Updated
+    required this.experienceYears, // Updated
     this.description,
     this.certificationUrl,
     required this.acquiredDate,
@@ -61,6 +66,7 @@ class SkillModel {
     this.isVerified = false,
     required this.createdAt,
     this.updatedAt,
+    this.level,
   });
 
   factory SkillModel.fromMap(Map<String, dynamic> map, String id) {
@@ -69,7 +75,9 @@ class SkillModel {
       userId: map['userId'] ?? '',
       name: map['name'] ?? '',
       category: map['category'] ?? '',
-      level: SkillLevel.fromString(map['level'] ?? 'beginner'),
+      // Directly use proficiencyLevel from map
+      proficiencyLevel: map['proficiencyLevel'] ?? 'Beginner',
+      experienceYears: map['experienceYears'] ?? '0', // Ensure it's a string
       description: map['description'],
       certificationUrl: map['certificationUrl'],
       acquiredDate: map['acquiredDate']?.toDate() ?? DateTime.now(),
@@ -85,7 +93,8 @@ class SkillModel {
       'userId': userId,
       'name': name,
       'category': category,
-      'level': level.name,
+      'proficiencyLevel': proficiencyLevel, // Updated
+      'experienceYears': experienceYears, // Updated
       'description': description,
       'certificationUrl': certificationUrl,
       'acquiredDate': acquiredDate,
@@ -101,7 +110,8 @@ class SkillModel {
     String? userId,
     String? name,
     String? category,
-    SkillLevel? level,
+    String? proficiencyLevel, // Updated
+    String? experienceYears, // Updated
     String? description,
     String? certificationUrl,
     DateTime? acquiredDate,
@@ -115,7 +125,8 @@ class SkillModel {
       userId: userId ?? this.userId,
       name: name ?? this.name,
       category: category ?? this.category,
-      level: level ?? this.level,
+      proficiencyLevel: proficiencyLevel ?? this.proficiencyLevel, // Updated
+      experienceYears: experienceYears ?? this.experienceYears, // Updated
       description: description ?? this.description,
       certificationUrl: certificationUrl ?? this.certificationUrl,
       acquiredDate: acquiredDate ?? this.acquiredDate,
@@ -139,7 +150,7 @@ class SkillModel {
 
   @override
   String toString() {
-    return 'SkillModel(id: $id, name: $name, category: $category, level: ${level.displayName}, isVerified: $isVerified)';
+    return 'SkillModel(id: $id, name: $name, category: $category, proficiencyLevel: $proficiencyLevel, isVerified: $isVerified)';
   }
 
   @override
@@ -150,7 +161,7 @@ class SkillModel {
         other.userId == userId &&
         other.name == name &&
         other.category == category &&
-        other.level == level;
+        other.proficiencyLevel == proficiencyLevel; // Updated
   }
 
   @override
@@ -159,6 +170,6 @@ class SkillModel {
         userId.hashCode ^
         name.hashCode ^
         category.hashCode ^
-        level.hashCode;
+        proficiencyLevel.hashCode; // Updated
   }
 }

@@ -91,11 +91,11 @@ class AppRoutes {
           settings: settings,
         );
 
-      /*case userManagement:
+      case userManagement:
         return MaterialPageRoute(
           builder: (_) => const UserManagementScreen(),
           settings: settings,
-        );*/
+        );
 
       case adminDashboard:
         return MaterialPageRoute(

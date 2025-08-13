@@ -5,6 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_screen.dart';
 import 'skills/skills_list_screen.dart';
 import 'skills/add_skill_screen.dart';
+import 'admin/analytics_screen.dart';
+import 'admin/user_management_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late AnimationController _drawerAnimationController;
   late Animation<Offset> _drawerSlideAnimation;
-  
+
   String _userName = '';
   String _userType = '';
   String _department = '';
@@ -28,12 +31,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _loadUserData();
-    
+
     _drawerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _drawerSlideAnimation = Tween<Offset>(
       begin: const Offset(-1.0, 0.0),
       end: Offset.zero,
@@ -57,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             .collection('users')
             .doc(user.uid)
             .get();
-        
+
         if (doc.exists && mounted) {
           final data = doc.data()!;
           setState(() {
@@ -85,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
     });
-    
+
     if (_isDrawerOpen) {
       _drawerAnimationController.forward();
     } else {
@@ -120,6 +123,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const SkillsListScreen(),
+      ),
+    );
+  }
+
+  void _navigateToAnalytics() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AnalyticsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToUserManagementScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const UserManagementScreen(),
+      ),
+    );
+  }
+
+  void _navigateToProfileScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ProfileScreen(),
       ),
     );
   }
@@ -194,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _isLoadingUserData ? 'Loading...' : '$_userType • $_department',
+                        _isLoadingUserData
+                            ? 'Loading...'
+                            : '$_userType • $_department',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
@@ -203,9 +232,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 30),
-                
+
                 // Quick actions
                 const Text(
                   'Quick Actions',
@@ -216,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 Expanded(
                   child: GridView.count(
                     crossAxisCount: 2,
@@ -243,9 +272,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           title: 'Analytics',
                           subtitle: 'View department insights',
                           color: const Color(0xFF9C27B0),
-                          onTap: () {
-                            _showComingSoonDialog('Analytics');
-                          },
+                          onTap: _navigateToAnalytics,
                         ),
                         _buildActionCard(
                           icon: Icons.people,
@@ -253,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           subtitle: 'View all employees',
                           color: const Color(0xFFFF9800),
                           onTap: () {
-                            _showComingSoonDialog('User Management');
+                            _navigateToUserManagementScreen();
                           },
                         ),
                       ],
@@ -263,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
           ),
-          
+
           // Custom sliding drawer
           if (_isDrawerOpen)
             GestureDetector(
@@ -274,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 height: double.infinity,
               ),
             ),
-          
+
           SlideTransition(
             position: _drawerSlideAnimation,
             child: Container(
@@ -334,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                  
+
                   // Drawer items
                   Expanded(
                     child: ListView(
@@ -350,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           title: 'Profile',
                           onTap: () {
                             _toggleDrawer();
-                            _showComingSoonDialog('Profile');
+                            _navigateToProfileScreen();
                           },
                         ),
                         _buildDrawerItem(
@@ -376,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             title: 'Analytics',
                             onTap: () {
                               _toggleDrawer();
-                              _showComingSoonDialog('Analytics');
+                              _navigateToAnalytics();
                             },
                           ),
                           _buildDrawerItem(
@@ -384,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             title: 'User Management',
                             onTap: () {
                               _toggleDrawer();
-                              _showComingSoonDialog('User Management');
+                              _navigateToUserManagementScreen();
                             },
                           ),
                         ],
@@ -514,22 +541,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showComingSoonDialog(String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('$feature Coming Soon'),
-        content: Text('The $feature feature will be available in the next update.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showAboutDialog() {
     showDialog(
       context: context,
@@ -561,7 +572,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             SizedBox(height: 8),
             Text('Phone: +27 (0) 51 507 3911'),
             SizedBox(height: 8),
-            Text('Address: 20 President Brand St, Bloemfontein Central, Bloemfontein, 9301'),
+            Text(
+                'Address: 20 President Brand St, Bloemfontein Central, Bloemfontein, 9301'),
           ],
         ),
         actions: [

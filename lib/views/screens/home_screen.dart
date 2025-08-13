@@ -559,9 +559,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Text('Email: support@treasury.gov.za'),
             SizedBox(height: 8),
-            Text('Phone: +27 12 315 5111'),
+            Text('Phone: +27 (0) 51 507 3911'),
             SizedBox(height: 8),
-            Text('Address: 40 Church Square, Pretoria'),
+            Text('Address: 20 President Brand St, Bloemfontein Central, Bloemfontein, 9301'),
           ],
         ),
         actions: [

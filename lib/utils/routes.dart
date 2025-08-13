@@ -6,6 +6,10 @@ import '../views/screens/home_screen.dart';
 import '../views/screens/profile_screen.dart';
 import '../views/screens/skills/skills_list_screen.dart';
 import '../views/screens/skills/add_skill_screen.dart';
+import '../views/screens/skills/edit_skill_screen.dart';
+import '../views/screens/admin/admin_dashboard_screen.dart';
+import '../views/screens/admin/analytics_screen.dart';
+import '../views/screens/admin/user_management_screen.dart';
 
 class AppRoutes {
   // Route names
@@ -19,6 +23,7 @@ class AppRoutes {
   static const String skillDetails = '/skill-details';
   static const String analytics = '/analytics';
   static const String userManagement = '/user-management';
+  static const String adminDashboard = '/admin-dashboard';
   static const String settings = '/settings';
   static const String about = '/about';
   static const String contact = '/contact';
@@ -62,15 +67,14 @@ class AppRoutes {
           settings: settings,
         );
 
-      /*case editSkill:
+      case editSkill:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => AddSkillScreen(
-            skillData: args?['skillData'],
-            isEditing: true,
+          builder: (_) => EditSkillScreen(
+            skill: args?['skill'],
           ),
           settings: settings,
-        );*/
+        );
 
       case skillDetails:
         final args = settings.arguments as Map<String, dynamic>?;
@@ -83,19 +87,25 @@ class AppRoutes {
 
       case analytics:
         return MaterialPageRoute(
-          builder: (_) => const ComingSoonScreen(title: 'Analytics'),
+          builder: (_) => const AnalyticsScreen(),
           settings: settings,
         );
 
-      case userManagement:
+      /*case userManagement:
         return MaterialPageRoute(
-          builder: (_) => const ComingSoonScreen(title: 'User Management'),
+          builder: (_) => const UserManagementScreen(),
+          settings: settings,
+        );*/
+
+      case adminDashboard:
+        return MaterialPageRoute(
+          builder: (_) => const AdminDashboardScreen(),
           settings: settings,
         );
 
-     /* case settings:
+      /*case settings:
         return MaterialPageRoute(
-          builder: (_) => const ComingSoonScreen(title: 'Settings'),
+          builder: (_) => const SettingsScreen(),
           settings: settings,
         );*/
 
@@ -144,7 +154,7 @@ class AppRoutes {
   }
 }
 
-// Placeholder screens for routes that don't exist yet
+// Updated placeholder screens for routes that don't exist yet
 class SkillDetailsScreen extends StatelessWidget {
   final Map<String, dynamic>? skillData;
 
@@ -158,6 +168,460 @@ class SkillDetailsScreen extends StatelessWidget {
       ),
       body: const Center(
         child: Text('Skill Details Screen - Coming Soon'),
+      ),
+    );
+  }
+}
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Application Settings',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D6B),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            _buildSettingsSection(
+              title: 'Account',
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.person,
+                  title: 'Profile Settings',
+                  subtitle: 'Update your personal information',
+                  onTap: () {
+                    AppRoutes.navigateTo(context, AppRoutes.profile);
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.security,
+                  title: 'Change Password',
+                  subtitle: 'Update your account password',
+                  onTap: () {
+                    // TODO: Navigate to change password screen
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsSection(
+              title: 'Notifications',
+              children: [
+                _buildSwitchTile(
+                  icon: Icons.notifications,
+                  title: 'Push Notifications',
+                  subtitle: 'Receive notifications about skills updates',
+                  value: true,
+                  onChanged: (value) {
+                    // TODO: Handle notification toggle
+                  },
+                ),
+                _buildSwitchTile(
+                  icon: Icons.email,
+                  title: 'Email Notifications',
+                  subtitle: 'Receive email updates about expiring skills',
+                  value: false,
+                  onChanged: (value) {
+                    // TODO: Handle email notification toggle
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsSection(
+              title: 'Appearance',
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.palette,
+                  title: 'Theme',
+                  subtitle: 'Light theme',
+                  onTap: () {
+                    // TODO: Show theme selection dialog
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.language,
+                  title: 'Language',
+                  subtitle: 'English',
+                  onTap: () {
+                    // TODO: Show language selection dialog
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsSection(
+              title: 'Data & Storage',
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.download,
+                  title: 'Export Data',
+                  subtitle: 'Download your skills data',
+                  onTap: () {
+                    _showExportDialog(context);
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.storage,
+                  title: 'Clear Cache',
+                  subtitle: 'Free up storage space',
+                  onTap: () {
+                    _showClearCacheDialog(context);
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsSection(
+              title: 'Support',
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.help,
+                  title: 'Help & FAQ',
+                  subtitle: 'Get help using the app',
+                  onTap: () {
+                    _showHelpDialog(context);
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.contact_support,
+                  title: 'Contact Support',
+                  subtitle: 'Get in touch with our team',
+                  onTap: () {
+                    AppRoutes.navigateTo(context, AppRoutes.contact);
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.info,
+                  title: 'About',
+                  subtitle: 'App version and information',
+                  onTap: () {
+                    AppRoutes.navigateTo(context, AppRoutes.about);
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsSection(
+              title: 'Advanced',
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.sync,
+                  title: 'Sync Settings',
+                  subtitle: 'Manage data synchronization',
+                  onTap: () {
+                    // TODO: Show sync settings
+                  },
+                ),
+                _buildSettingsTile(
+                  icon: Icons.backup,
+                  title: 'Backup & Restore',
+                  subtitle: 'Manage your data backups',
+                  onTap: () {
+                    // TODO: Show backup settings
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // Logout button
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
+              ),
+              child: TextButton.icon(
+                onPressed: () {
+                  _showLogoutDialog(context);
+                },
+                icon: const Icon(Icons.logout, color: Colors.red),
+                label: const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // App version
+            const Center(
+              child: Text(
+                'Skills Audit System v1.0.0',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildSettingsSection({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2E7D6B),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 2,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2E7D6B).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: const Color(0xFF2E7D6B),
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(subtitle),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  static Widget _buildSwitchTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2E7D6B).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: const Color(0xFF2E7D6B),
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(subtitle),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: const Color(0xFF2E7D6B),
+      ),
+    );
+  }
+
+  static void _showExportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Data'),
+        content: const Text(
+          'This will download all your skills data as a PDF report. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Exporting data...'),
+                  backgroundColor: Color(0xFF2E7D6B),
+                ),
+              );
+            },
+            child: const Text('Export'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showClearCacheDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Cache'),
+        content: const Text(
+          'This will clear temporary files and free up storage space. Your data will not be affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cache cleared successfully'),
+                  backgroundColor: Color(0xFF2E7D6B),
+                ),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Help & FAQ'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Frequently Asked Questions:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text('Q: How do I add a new skill?'),
+              Text('A: Navigate to Skills > Add New Skill and fill in the details.'),
+              SizedBox(height: 8),
+              Text('Q: How do I upload certifications?'),
+              Text('A: When adding/editing a skill, use the "Upload Certificate" button.'),
+              SizedBox(height: 8),
+              Text('Q: Can I edit my profile?'),
+              Text('A: Yes, go to Profile > Edit Profile to update your information.'),
+              SizedBox(height: 12),
+              Text(
+                'For more help, contact our support team.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              AppRoutes.navigateToAndClearStack(context, AppRoutes.auth);
+            },
+            child: const Text('Sign Out'),
+          ),
+        ],
       ),
     );
   }

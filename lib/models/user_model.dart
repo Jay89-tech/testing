@@ -40,13 +40,13 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
       'email': email,
       'department': department,
       'userType': userType,
       'skills': skills,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 

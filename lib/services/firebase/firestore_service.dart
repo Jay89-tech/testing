@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/skill_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -41,16 +42,35 @@ static Future<void> addUser(UserModel user) async {
     }
   }
 
-  static Future<void> updateUser(UserModel user) async {
-    try {
-      await _firestore
-          .collection(_usersCollection)
-          .doc(user.id)
-          .update(user.toMap());
-    } catch (e) {
-      throw Exception('Failed to update user: $e');
+static Future<void> updateUser(UserModel user) async {
+  try {
+    // Debug: Print current user and document ID
+    final currentUser = FirebaseAuth.instance.currentUser;
+    print('Current authenticated user: ${currentUser?.uid}');
+    print('Trying to update user document: ${user.id}');
+    print('User data: ${user.toMap()}');
+    
+    // Ensure user is authenticated
+    if (currentUser == null) {
+      throw Exception('User must be authenticated to update profile');
     }
+    
+    // Ensure user can only update their own document
+    if (currentUser.uid != user.id) {
+      throw Exception('Cannot update other users\' profiles');
+    }
+    
+    await _firestore
+        .collection(_usersCollection)
+        .doc(user.id)
+        .update(user.toMap());
+        
+    print('User update successful');
+  } catch (e) {
+    print('Update user error: $e');
+    throw Exception('Failed to update user: $e');
   }
+}
 
   static Future<List<UserModel>> getAllUsers() async {
     try {
@@ -94,16 +114,25 @@ static Future<void> addUser(UserModel user) async {
   }
 
   // Skill operations
-  static Future<String> addSkill(SkillModel skill) async {
-    try {
-      final docRef = await _firestore
-          .collection(_skillsCollection)
-          .add(skill.toMap());
-      return docRef.id;
-    } catch (e) {
-      throw Exception('Failed to add skill: $e');
+static Future<String> addSkill(SkillModel skill) async {
+  try {
+    // Ensure the skill belongs to the current authenticated user
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception('User must be authenticated to add skills');
     }
+    if (skill.userId != currentUser.uid) {
+      throw Exception('Cannot create skills for other users');
+    }
+    
+    final docRef = await _firestore
+        .collection(_skillsCollection)
+        .add(skill.toMap());
+    return docRef.id;
+  } catch (e) {
+    throw Exception('Failed to add skill: $e');
   }
+}
 
   static Future<void> updateSkill(SkillModel skill) async {
     try {

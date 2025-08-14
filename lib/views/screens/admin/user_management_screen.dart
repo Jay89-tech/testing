@@ -1,6 +1,5 @@
 // lib/views/screens/admin/user_management_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '/services/firebase/firestore_service.dart'; // Ensure this path is correct
 import '/models/user_model.dart'; // Ensure this path is correct
 // import 'analytics_screen.dart'; // Uncomment if needed

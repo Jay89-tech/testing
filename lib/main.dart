@@ -9,7 +9,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, // Add this line
   );
-  runApp(const SkillsAuditApp());
+  runApp(const SkillsAuditApp()); 
 }
 
 class SkillsAuditApp extends StatelessWidget {

@@ -50,15 +50,14 @@ class SkillModel {
   final bool isVerified;
   final DateTime createdAt;
   final DateTime? updatedAt;
-  final String? level;
 
   SkillModel({
     required this.id,
     required this.userId,
     required this.name,
     required this.category,
-    required this.proficiencyLevel, // Updated
-    required this.experienceYears, // Updated
+    required this.proficiencyLevel,
+    required this.experienceYears,
     this.description,
     this.certificationUrl,
     required this.acquiredDate,
@@ -66,26 +65,96 @@ class SkillModel {
     this.isVerified = false,
     required this.createdAt,
     this.updatedAt,
-    this.level,
   });
 
   factory SkillModel.fromMap(Map<String, dynamic> map, String id) {
-    return SkillModel(
-      id: id,
-      userId: map['userId'] ?? '',
-      name: map['name'] ?? '',
-      category: map['category'] ?? '',
-      // Directly use proficiencyLevel from map
-      proficiencyLevel: map['proficiencyLevel'] ?? 'Beginner',
-      experienceYears: map['experienceYears'] ?? '0', // Ensure it's a string
-      description: map['description'],
-      certificationUrl: map['certificationUrl'],
-      acquiredDate: map['acquiredDate']?.toDate() ?? DateTime.now(),
-      expiryDate: map['expiryDate']?.toDate(),
-      isVerified: map['isVerified'] ?? false,
-      createdAt: map['createdAt']?.toDate() ?? DateTime.now(),
-      updatedAt: map['updatedAt']?.toDate(),
-    );
+    try {
+      return SkillModel(
+        id: id,
+        userId: map['userId']?.toString() ?? '',
+        name: map['name']?.toString() ?? '',
+        category: map['category']?.toString() ?? 'Other',
+        // Ensure proficiencyLevel is always a valid string
+        proficiencyLevel: _validateProficiencyLevel(map['proficiencyLevel']),
+        // Ensure experienceYears is always a valid string
+        experienceYears: _validateExperienceYears(map['experienceYears']),
+        description: map['description']?.toString(),
+        certificationUrl: map['certificationUrl']?.toString(),
+        acquiredDate: _parseDateTime(map['acquiredDate']) ?? DateTime.now(),
+        expiryDate: _parseDateTime(map['expiryDate']),
+        isVerified: map['isVerified'] == true,
+        createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+        updatedAt: _parseDateTime(map['updatedAt']),
+      );
+    } catch (e) {
+      print('Error parsing SkillModel from map: $e');
+      print('Map data: $map');
+      rethrow;
+    }
+  }
+
+  // Helper method to validate proficiency level
+  static String _validateProficiencyLevel(dynamic value) {
+    if (value == null) return 'Beginner';
+    
+    final String strValue = value.toString();
+    const validLevels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+    
+    // Check if the value matches any valid level (case insensitive)
+    for (String level in validLevels) {
+      if (strValue.toLowerCase() == level.toLowerCase()) {
+        return level;
+      }
+    }
+    
+    // Default to Beginner if invalid
+    return 'Beginner';
+  }
+
+  // Helper method to validate experience years
+  static String _validateExperienceYears(dynamic value) {
+    if (value == null) return '0';
+    
+    final String strValue = value.toString();
+    
+    // Try to parse as number to validate
+    final int? years = int.tryParse(strValue);
+    if (years != null && years >= 0) {
+      return years.toString();
+    }
+    
+    // Default to 0 if invalid
+    return '0';
+  }
+
+  // Helper method to parse DateTime objects
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    
+    try {
+      // If it's already a DateTime, return it
+      if (value is DateTime) return value;
+      
+      // If it's a Firestore Timestamp, convert it
+      if (value.runtimeType.toString() == 'Timestamp') {
+        return value.toDate();
+      }
+      
+      // If it's a string, try to parse it
+      if (value is String) {
+        return DateTime.tryParse(value);
+      }
+      
+      // If it has a toDate method, call it
+      if (value.runtimeType.toString().contains('Timestamp')) {
+        return value.toDate();
+      }
+      
+      return null;
+    } catch (e) {
+      print('Error parsing DateTime: $e');
+      return null;
+    }
   }
 
   Map<String, dynamic> toMap() {
@@ -93,8 +162,8 @@ class SkillModel {
       'userId': userId,
       'name': name,
       'category': category,
-      'proficiencyLevel': proficiencyLevel, // Updated
-      'experienceYears': experienceYears, // Updated
+      'proficiencyLevel': proficiencyLevel,
+      'experienceYears': experienceYears,
       'description': description,
       'certificationUrl': certificationUrl,
       'acquiredDate': acquiredDate,
@@ -110,8 +179,8 @@ class SkillModel {
     String? userId,
     String? name,
     String? category,
-    String? proficiencyLevel, // Updated
-    String? experienceYears, // Updated
+    String? proficiencyLevel,
+    String? experienceYears,
     String? description,
     String? certificationUrl,
     DateTime? acquiredDate,
@@ -125,8 +194,8 @@ class SkillModel {
       userId: userId ?? this.userId,
       name: name ?? this.name,
       category: category ?? this.category,
-      proficiencyLevel: proficiencyLevel ?? this.proficiencyLevel, // Updated
-      experienceYears: experienceYears ?? this.experienceYears, // Updated
+      proficiencyLevel: proficiencyLevel ?? this.proficiencyLevel,
+      experienceYears: experienceYears ?? this.experienceYears,
       description: description ?? this.description,
       certificationUrl: certificationUrl ?? this.certificationUrl,
       acquiredDate: acquiredDate ?? this.acquiredDate,
@@ -148,9 +217,14 @@ class SkillModel {
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
   }
 
+  // Helper method to get SkillLevel enum from proficiencyLevel string
+  SkillLevel get skillLevelEnum {
+    return SkillLevel.fromString(proficiencyLevel);
+  }
+
   @override
   String toString() {
-    return 'SkillModel(id: $id, name: $name, category: $category, proficiencyLevel: $proficiencyLevel, isVerified: $isVerified)';
+    return 'SkillModel(id: $id, name: $name, category: $category, proficiencyLevel: $proficiencyLevel, experienceYears: $experienceYears, isVerified: $isVerified)';
   }
 
   @override
@@ -161,7 +235,8 @@ class SkillModel {
         other.userId == userId &&
         other.name == name &&
         other.category == category &&
-        other.proficiencyLevel == proficiencyLevel; // Updated
+        other.proficiencyLevel == proficiencyLevel &&
+        other.experienceYears == experienceYears;
   }
 
   @override
@@ -170,6 +245,7 @@ class SkillModel {
         userId.hashCode ^
         name.hashCode ^
         category.hashCode ^
-        proficiencyLevel.hashCode; // Updated
+        proficiencyLevel.hashCode ^
+        experienceYears.hashCode;
   }
 }

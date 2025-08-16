@@ -17,7 +17,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  String? _selectedProficiencyLevelFilter; // Changed from SkillLevel? to String?
+  String? _selectedProficiencyLevelFilter;
 
   final List<String> _categories = [
     'All',
@@ -33,7 +33,6 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
     'Other'
   ];
 
-  // Proficiency levels for filtering (same as in SkillsController)
   final List<String> _proficiencyLevels = [
     'All',
     'Beginner',
@@ -41,7 +40,6 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
     'Advanced',
     'Expert'
   ];
-
 
   @override
   void dispose() {
@@ -150,16 +148,16 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                       // Proficiency Level Filter
                       Container(
                         margin: const EdgeInsets.only(right: 8),
-                        child: DropdownButton<String?>( // Changed type to String?
+                        child: DropdownButton<String?>(
                           value: _selectedProficiencyLevelFilter,
                           hint: const Text('All Levels'),
                           items: [
-                            const DropdownMenuItem<String?>( // Changed type to String?
+                            const DropdownMenuItem<String?>(
                               value: null,
                               child: Text('All Levels'),
                             ),
-                            ..._proficiencyLevels.where((level) => level != 'All').map((level) { // Iterate over string list
-                              return DropdownMenuItem<String?>( // Changed type to String?
+                            ..._proficiencyLevels.where((level) => level != 'All').map((level) {
+                              return DropdownMenuItem<String?>(
                                 value: level,
                                 child: Row(
                                   children: [
@@ -168,12 +166,11 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                                       height: 12,
                                       margin: const EdgeInsets.only(right: 8),
                                       decoration: BoxDecoration(
-                                        // Convert string back to SkillLevel for color
-                                        color: _getLevelColor(SkillLevel.fromString(level)),
+                                        color: _getLevelColorFromString(level),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
-                                    Text(level), // Display string directly
+                                    Text(level),
                                   ],
                                 ),
                               );
@@ -199,13 +196,11 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
             child: StreamBuilder<List<SkillModel>>(
               stream: FirestoreService.getUserSkillsStream(user.uid),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-
+                // Add more detailed error logging
                 if (snapshot.hasError) {
+                  print('StreamBuilder error: ${snapshot.error}');
+                  print('Error details: ${snapshot.error.runtimeType}');
+                  
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -224,12 +219,30 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        Text(
+                          'Error: ${snapshot.error}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () => setState(() {}),
+                          onPressed: () {
+                            // Force rebuild to retry the stream
+                            setState(() {});
+                          },
                           child: const Text('Retry'),
                         ),
                       ],
                     ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
                   );
                 }
 
@@ -297,7 +310,7 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
 
       // Proficiency level filter
       final matchesLevel = _selectedProficiencyLevelFilter == null ||
-          _selectedProficiencyLevelFilter == 'All' || // Added 'All' check
+          _selectedProficiencyLevelFilter == 'All' ||
           skill.proficiencyLevel == _selectedProficiencyLevelFilter;
 
       return matchesSearch && matchesCategory && matchesLevel;
@@ -305,9 +318,6 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
   }
 
   Widget _buildSkillCard(SkillModel skill) {
-    // Determine the SkillLevel enum from the proficiencyLevel string for coloring
-    final SkillLevel skillLevelEnum = SkillLevel.fromString(skill.proficiencyLevel);
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -346,9 +356,9 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 4), // Added spacing
+                        const SizedBox(height: 4),
                         Text(
-                          'Experience: ${skill.experienceYears} years', // Display experience years
+                          'Experience: ${skill.experienceYears} years',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -365,10 +375,10 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getLevelColor(skillLevelEnum).withOpacity(0.1),
+                      color: _getLevelColorFromString(skill.proficiencyLevel).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _getLevelColor(skillLevelEnum),
+                        color: _getLevelColorFromString(skill.proficiencyLevel),
                         width: 1,
                       ),
                     ),
@@ -379,17 +389,17 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: _getLevelColor(skillLevelEnum),
+                            color: _getLevelColorFromString(skill.proficiencyLevel),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          skill.proficiencyLevel, // Display proficiency level string directly
+                          skill.proficiencyLevel,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: _getLevelColor(skillLevelEnum),
+                            color: _getLevelColorFromString(skill.proficiencyLevel),
                           ),
                         ),
                       ],
@@ -494,16 +504,19 @@ class _SkillsListScreenState extends State<SkillsListScreen> {
     );
   }
 
-  Color _getLevelColor(SkillLevel level) {
-    switch (level) {
-      case SkillLevel.beginner:
+  // Helper method to get color from proficiency level string
+  Color _getLevelColorFromString(String level) {
+    switch (level.toLowerCase()) {
+      case 'beginner':
         return Colors.red;
-      case SkillLevel.intermediate:
+      case 'intermediate':
         return Colors.orange;
-      case SkillLevel.advanced:
+      case 'advanced':
         return Colors.blue;
-      case SkillLevel.expert:
+      case 'expert':
         return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 

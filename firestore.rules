@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Allow user to create their own document during registration
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow user to read, update, and delete only their own document
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow other authenticated users to read user profiles (for directory/search functionality)
+      allow read: if request.auth != null;
+      
+      // Temporary: More permissive rule for debugging - REMOVE IN PRODUCTION
+      // allow read, write: if request.auth != null;
+    }
+    
+    // Skills collection rules
+    match /skills/{skillId} {
+      // Allow any authenticated user to read skills (for browsing/search functionality)
+      allow read: if request.auth != null;
+      
+      // Allow authenticated users to create new skills
+      // Ensure the userId field matches the authenticated user
+      allow create: if request.auth != null && 
+                   request.auth.uid == request.resource.data.userId;
+      
+      // Allow only the owner of the skill to update or delete it
+      allow update, delete: if request.auth != null && 
+                           request.auth.uid == resource.data.userId;
+    }
+    
+    // Departments collection (if you decide to create a separate collection for departments)
+    match /departments/{departmentId} {
+      // Allow all authenticated users to read departments
+      allow read: if request.auth != null;
+      
+      // Only allow admins or specific users to create/update departments
+      // You might want to add an admin check here
+      allow create, update: if request.auth != null;
+    }
+    
+    // Test collection (used by FirebaseService.testConnection())
+    match /test/{testId} {
+      // Allow authenticated users to read test documents for connection testing
+      allow read: if request.auth != null;
+    }
+    
+    // Storage metadata collection (if you store file metadata in Firestore)
+    match /storage_metadata/{userId} {
+      // Allow users to read/write their own storage metadata
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Default rule to deny access to any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Optional: If you're using Firebase Storage, here are the corresponding storage rules
+// Place this in your Firebase Storage rules, not Firestore rules
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Profile images
+    match /profiles/{fileName} {
+      // Allow users to read any profile image
+      allow read: if request.auth != null;
+      
+      // Allow users to upload/update/delete only their own profile images
+      // Assuming filename contains user ID like: profile_{userId}_{timestamp}.jpg
+      allow write, delete: if request.auth != null && 
+                           fileName.matches('profile_' + request.auth.uid + '_.*');
+    }
+    
+    // Skill documents
+    match /documents/{userId}/{fileName} {
+      // Allow users to read documents if they're the owner
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to write/delete only their own documents
+      allow write, delete: if request.auth != null && request.auth.uid == userId;
+      
+      // Optional: Allow other users to read documents if you want skills to be publicly viewable
+      // allow read: if request.auth != null;
+    }
+    
+    // Deny access to any other storage paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /skills/{skillId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
